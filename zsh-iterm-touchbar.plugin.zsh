@@ -93,22 +93,33 @@ lastPackageJsonPath=''
 
   touchBarState=''
 
+
+  defaultKeys=(current_folder git_branch git_status git_push docker_compose yarn_tasks rake_tasks composer phpunit)
+  fnKeysIndex=1
+
+  for key in ${ITERM_TOUCHBAR_KEYS:-$defaultKeys}; do
+    eval "add_$key"
+  done
+}
+
+add_current_folder(){
   # CURRENT_DIR
   # -----------
-  echo -ne "\033]1337;SetKeyLabel=F1=👉 $(echo $(pwd) | awk -F/ '{print $(NF-1)"/"$(NF)}')\a"
-  bindkey -s '^[OP' 'ls -la \n'
+  echo -ne "\033]1337;SetKeyLabel=F$fnKeysIndex=👉 $(echo $(pwd) | awk -F/ '{print $(NF-1)"/"$(NF)}')\a"
+  bindkey -s "${fnKeys[$fnKeysIndex]}" 'ls -la \n'
+  _increaseKeyIndex
+}
 
-  # GIT
-  # ---
-  # Check if the current directory is in a Git repository.
-  command git rev-parse --is-inside-work-tree &>/dev/null || return
+add_git_branches(){
+  if _is_git_directory; then
+    echo -ne "\033]1337;SetKeyLabel=F$fnKeysIndex=🎋 $(git_current_branch)\a"
+    bindkey "${fnKeys[$fnKeysIndex]}" _displayBranches
+    _increaseKeyIndex
+  fi
+}
 
-  # Check if the current directory is in .git before running git checks.
-  if [[ "$(git rev-parse --is-inside-git-dir 2> /dev/null)" == 'false' ]]; then
-
-    # Ensure the index is up to date.
-    git update-index --really-refresh -q &>/dev/null
-
+add_git_status(){
+  if _is_git_directory; then
     # String of indicators
     local indicators=''
 
@@ -120,55 +131,44 @@ lastPackageJsonPath=''
 
     [ -n "${indicators}" ] && touchbarIndicators="🔥[${indicators}]" || touchbarIndicators="🙌";
 
-    echo -ne "\033]1337;SetKeyLabel=F2=🎋 $(git_current_branch)\a"
-    echo -ne "\033]1337;SetKeyLabel=F3=$touchbarIndicators\a"
-    echo -ne "\033]1337;SetKeyLabel=F4=✉️ push\a";
+    echo -ne "\033]1337;SetKeyLabel=F$fnKeysIndex=$touchbarIndicators\a"
+    bindkey -s "${fnKeys[$fnKeysIndex]}" 'git status \n'
+    _increaseKeyIndex
+  fi
+}
+
+add_git_push(){
+  if _is_git_directory; then
+
+    echo -ne "\033]1337;SetKeyLabel=F$fnKeysIndex=✉️ push\a";
 
     # bind git actions
-    bindkey '^[OQ' _displayBranches
-    bindkey -s '^[OR' 'git status \n'
-    bindkey -s '^[OS' "git push origin $(git_current_branch) \n"
+    bindkey -s "${fnKeys[$fnKeysIndex]}" "git push origin $(git_current_branch) \n"
+    "${fnKeys[$fnKeysIndex]}"
   fi
+}
 
-  fnKeysIndex=5
-
-  # PACKAGE.JSON
+add_docker_compose(){
+  # docker-compose.yaml
   # ------------
   if [[ -f docker-compose.yaml ]]; then
     echo -ne "\033]1337;SetKeyLabel=F$fnKeysIndex=⚡️ docker \a"
     bindkey "${fnKeys[$fnKeysIndex]}" _displayDockerComposerOptions
-    fnKeysIndex=$((fnKeysIndex + 1))
+    _increaseKeyIndex
   fi
+}
 
+add_yarn_tasks(){
   # PACKAGE.JSON
   # ------------
   if [[ -f package.json ]]; then
     echo -ne "\033]1337;SetKeyLabel=F$fnKeysIndex=⚡️ yarn run\a"
     bindkey "${fnKeys[$fnKeysIndex]}" _displayYarnScripts
-    fnKeysIndex=$((fnKeysIndex + 1))
+    _increaseKeyIndex
   fi
+}
 
-  # COMPOSTER.JSON
-  # ------------
-  if [[ -f composer.json ]]; then
-    echo -ne "\033]1337;SetKeyLabel=F$fnKeysIndex=⚡️ composer\a"
-    if [[ -f composer.lock ]]; then
-      command='composer update \n'
-    else
-      command='composer install \n'
-    fi
-    bindkey -s "${fnKeys[$fnKeysIndex]}" $command
-    fnKeysIndex=$((fnKeysIndex + 1))
-  fi
-
-  # phpunit.xml.dist
-  # ------------
-  if [[ -f phpunit.xml.dist ]]; then
-    echo -ne "\033]1337;SetKeyLabel=F$fnKeysIndex=⚡️ phpunit\a"
-    bindkey -s "${fnKeys[$fnKeysIndex]}" "phpunit \n"
-    fnKeysIndex=$((fnKeysIndex + 1))
-  fi
-
+add_rake_tasks(){
   # Rakefile
   # ------------
   if [[ -f Rakefile ]]; then
@@ -179,8 +179,44 @@ lastPackageJsonPath=''
 
     echo -ne "\033]1337;SetKeyLabel=F$fnKeysIndex=⚡️ rake tasks\a"
     bindkey "${fnKeys[$fnKeysIndex]}" _displayRakeTasks
-    fnKeysIndex=$((fnKeysIndex + 1))
+    _increaseKeyIndex
   fi
+}
+
+add_composer(){
+  # COMPOSER.JSON
+  # ------------
+  if [[ -f composer.json ]]; then
+    echo -ne "\033]1337;SetKeyLabel=F$fnKeysIndex=⚡️ composer\a"
+    if [[ -f composer.lock ]]; then
+      command='composer update \n'
+    else
+      command='composer install \n'
+    fi
+    bindkey -s "${fnKeys[$fnKeysIndex]}" $command
+    _increaseKeyIndex
+  fi
+
+}
+
+add_phpunit(){
+  # phpunit.xml.dist
+  # ------------
+  if [[ -f phpunit.xml.dist ]]; then
+    echo -ne "\033]1337;SetKeyLabel=F$fnKeysIndex=⚡️ phpunit\a"
+    bindkey -s "${fnKeys[$fnKeysIndex]}" "phpunit \n"
+    _increaseKeyIndex
+  fi
+}
+
+_increaseKeyIndex(){
+  fnKeysIndex=$((fnKeysIndex + 1))
+}
+
+_is_git_directory(){
+  git update-index --really-refresh -q &>/dev/null
+
+  [[ "$(git rev-parse --is-inside-git-dir 2> /dev/null)" == 'false' ]]
 }
 
  _displayYarnScripts() {
@@ -196,8 +232,9 @@ lastPackageJsonPath=''
   touchBarState='yarn'
 
   fnKeysIndex=1
+
   for yarnScript in "$yarnScripts[@]"; do
-    fnKeysIndex=$((fnKeysIndex + 1))
+    _increaseKeyIndex
     bindkey -s $fnKeys[$fnKeysIndex] "yarn run $yarnScript \n"
     echo -ne "\033]1337;SetKeyLabel=F$fnKeysIndex=$yarnScript\a"
   done
@@ -216,7 +253,7 @@ lastPackageJsonPath=''
    fnKeysIndex=1
    for branch in $(git branch); do
      if [[ $branch != "*" ]]; then
-       fnKeysIndex=$((fnKeysIndex + 1))
+       _increaseKeyIndex
        bindkey -s $fnKeys[$fnKeysIndex] "git checkout $branch \n"
        echo -ne "\033]1337;SetKeyLabel=F$fnKeysIndex=$branch\a"
      fi
@@ -238,7 +275,7 @@ _displayRakeTasks() {
 
     for task in $tasks; do
 
-      fnKeysIndex=$((fnKeysIndex + 1))
+      _increaseKeyIndex
       _addRakeTask $task $fnKeysIndex
     done
 
@@ -297,7 +334,7 @@ _displayDockerComposerOptions(){
 
   for task in $tasks; do
 
-    fnKeysIndex=$((fnKeysIndex + 1))
+    _increaseKeyIndex
     echo -ne "\033]1337;SetKeyLabel=F$fnKeysIndex=$task\a"
     bindkey -s $fnKeys[$fnKeysIndex] "docker-compose $task \n"
   done
