@@ -132,9 +132,27 @@ lastPackageJsonPath=''
 
   fnKeysIndex=5
 
-  # PACKAGE.JSON
+  # Rails
   # ------------
-  if [[ -f docker-compose.yaml ]]; then
+  grep 'rails' 'Gemfile' >/dev/null 2>&1
+  if [ $? -eq 0 ]; then
+      echo -ne "\033]1337;SetKeyLabel=F$fnKeysIndex=🚂️ rails \a"
+      bindkey "${fnKeys[$fnKeysIndex]}" _displayRailsOptions
+      fnKeysIndex=$((fnKeysIndex + 1))
+  elif test -e Rakefile ; then
+      if _rake_does_task_list_need_generating; then
+          echo "\nGenerating .rake_tasks..." >&2
+          _rake_generate
+      fi
+      
+      echo -ne "\033]1337;SetKeyLabel=F$fnKeysIndex=⚡️ rake tasks\a"
+      bindkey "${fnKeys[$fnKeysIndex]}" _displayRakeTasks
+      fnKeysIndex=$((fnKeysIndex + 1))
+  fi
+
+  # DOCKER-COMPOSE.yaml
+  # ------------
+  if test -e docker-compose.yaml || test -e docker-compose.yml; then
     echo -ne "\033]1337;SetKeyLabel=F$fnKeysIndex=⚡️ docker \a"
     bindkey "${fnKeys[$fnKeysIndex]}" _displayDockerComposerOptions
     fnKeysIndex=$((fnKeysIndex + 1))
@@ -148,7 +166,7 @@ lastPackageJsonPath=''
     fnKeysIndex=$((fnKeysIndex + 1))
   fi
 
-  # COMPOSTER.JSON
+  # COMPOSER.JSON
   # ------------
   if [[ -f composer.json ]]; then
     echo -ne "\033]1337;SetKeyLabel=F$fnKeysIndex=⚡️ composer\a"
@@ -161,26 +179,14 @@ lastPackageJsonPath=''
     fnKeysIndex=$((fnKeysIndex + 1))
   fi
 
-  # phpunit.xml.dist
+  # phpunit.xml
   # ------------
-  if [[ -f phpunit.xml.dist ]]; then
+  if [[ -f phpunit.xml ]]; then
     echo -ne "\033]1337;SetKeyLabel=F$fnKeysIndex=⚡️ phpunit\a"
     bindkey -s "${fnKeys[$fnKeysIndex]}" "phpunit \n"
     fnKeysIndex=$((fnKeysIndex + 1))
   fi
 
-  # Rakefile
-  # ------------
-  if [[ -f Rakefile ]]; then
-    if _rake_does_task_list_need_generating; then
-      echo "\nGenerating .rake_tasks..." >&2
-      _rake_generate
-    fi
-
-    echo -ne "\033]1337;SetKeyLabel=F$fnKeysIndex=⚡️ rake tasks\a"
-    bindkey "${fnKeys[$fnKeysIndex]}" _displayRakeTasks
-    fnKeysIndex=$((fnKeysIndex + 1))
-  fi
 }
 
  _displayYarnScripts() {
@@ -307,11 +313,33 @@ _displayDockerComposerOptions(){
 
 }
 
+_displayRailsOptions(){
+    _clearTouchbar
+    _unbindTouchbar
+
+    touchBarState='railsOptions'
+
+    echo -ne "\033]1337;SetKeyLabel=F2=start\a"
+    bindkey -s $fnKeys[2] "bundle exec rails s \n"
+
+    echo -ne "\033]1337;SetKeyLabel=F3=run tests\a"
+    bindkey -s $fnKeys[3] "bundle exec rake test \n"
+
+    echo -ne "\033]1337;SetKeyLabel=F4=list tasks\a"
+    bindkey -s $fnKeys[4] "bundle exec rake -T \n"
+
+    echo -ne "\033]1337;SetKeyLabel=F5=reset DB\a"
+    bindkey -s $fnKeys[5] "bundle exec rake db:drop && bundle exec db:create && bundle exec db:setup \n"
+
+    echo -ne "\033]1337;SetKeyLabel=F1=👈 back\a"
+    bindkey "${fnKeys[1]}" _displayDefault
+}
 
 zle -N _displayDefault
 zle -N _displayYarnScripts
 zle -N _displayBranches
 zle -N _displayRakeTasks
+zle -N _displayRailsOptions
 zle -N _displayDockerComposerOptions
 
 

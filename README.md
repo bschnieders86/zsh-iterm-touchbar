@@ -30,6 +30,10 @@
     * Display `rake tasks` ⚡️
       * Lists available tasks
       * Runs selected task
+    * Display `ruby on rails` related options
+    * Run `phpunit` tests
+    * Run `composer install` and `composer update`
+    
 
 
 ### Requirements
@@ -41,15 +45,28 @@
 
 ### Installing plugin
 
-Clone the repo in your plugins directory:
+#### with oh-my-zsh
 
-* `$ cd ${ZSH_CUSTOM1:-$ZSH/custom}/plugins`
-* `$ git clone https://github.com/bschnieders86/zsh-iterm-touchbar.git`
+Clone the repo in your plugins directory:
+```bash
+ $ cd ${ZSH_CUSTOM1:-$ZSH/custom}/plugins`
+ $ git clone https://github.com/popcorn4dinner/zsh-iterm-touchbar.git`
+```
 
 Then add the plugin into your `~/.zshrc`:
-
 ```
 plugins=(... zsh-iterm-touchbar)
+```
+
+#### without framework
+clone the repository inside your zsh plugin folder
+```bash
+ $ git clone https://github.com/popcorn4dinner/zsh-iterm-touchbar.git`
+```
+
+Then add the plugin into your `~/.zshrc`:
+```
+source path/to/your/zsh_plugins/zsh-iterm-touchbar/zsh-iterm-touchbar.plugin.zsh
 ```
 
 ### Customize
