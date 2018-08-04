@@ -1,14 +1,31 @@
+### CONFIGURATION
+
 # GIT
-GIT_UNCOMMITTED="${GIT_UNCOMMITTED:-+}"
-GIT_UNSTAGED="${GIT_UNSTAGED:-!}"
-GIT_UNTRACKED="${GIT_UNTRACKED:-?}"
-GIT_STASHED="${GIT_STASHED:-$}"
-GIT_UNPULLED="${GIT_UNPULLED:-⇣}"
-GIT_UNPUSHED="${GIT_UNPUSHED:-⇡}"
+GIT_UNCOMMITTED="${ZSH_TOUCHBAR_GIT_UNCOMMITTED:-+}"
+GIT_UNSTAGED="${ZSH_TOUCHBAR_GIT_UNSTAGED:-!}"
+GIT_UNTRACKED="${ZSH_TOUCHBAR_GIT_UNTRACKED:-?}"
+GIT_STASHED="${ZSH_TOUCHBAR_GIT_STASHED:-$}"
+GIT_UNPULLED="${ZSH_TOUCHBAR_GIT_UNPULLED:-⇣}"
+GIT_UNPUSHED="${ZSH_TOUCHBAR_GIT_UNPUSHED:-⇡}"
 
 # YARN
-YARN_ENABLED=true
-CURRENT_DIR_CMD='pwd'
+yarn_enabled=${ZSH_TOUCHBAR_YARN_ENABLED-true}
+current_dir_cmd=${ZSH_TOUCHBAR_CURRENT_DIR_COMMAND-'pwd'}
+default_widgets=(
+    "git_branches"
+    "current_dir"
+    "git_status"
+    "git_pull"
+    "git_push"
+    "yarn_or_npm"
+    "rails_or_rake"
+    "docker-compose"
+    "composer"
+    "phpunit"
+)
+touchbar_widgets=${ZSH_TOUCHBAR_WIDGETS-$default_widgets}
+
+### Util functions
 
 # https://unix.stackexchange.com/a/22215
 find-up () {
@@ -120,28 +137,32 @@ function setKey(){
   fi
 }
 
-function _displayDefault() {
-  _clearTouchbar
-  _unbindTouchbar
+### Widgets
 
-  touchBarState=''
+function _add_git_widget() {
+    # GIT
+    # ---
+    # Check if the current directory is in a Git repository.
+    command git rev-parse --is-inside-work-tree &>/dev/null || return
 
-  # CURRENT_DIR
-  # -----------
-  local current_dir_label="👉 $(echo $(pwd) | awk -F/ '{print $(NF-1)"/"$(NF)}')\a"
-  setKey 1 "$current_dir_label" "$CURRENT_DIR_CMD"
+    if [[ "$(git rev-parse --is-inside-git-dir 2> /dev/null)" == 'false' ]] ; then
+        $1
+    fi
+}
 
-  # GIT
-  # ---
-  # Check if the current directory is in a Git repository.
-  command git rev-parse --is-inside-work-tree &>/dev/null || return
+function git_branches() {
+    _add_git_widget "$1" _git_branches
+}
 
-  # Check if the current directory is in .git before running git checks.
-  if [[ "$(git rev-parse --is-inside-git-dir 2> /dev/null)" == 'false' ]]; then
+function _git_branches() {
+    setKey "$1" "🎋 `git_current_branch`" _displayBranches '-q'
+}
 
-    # Ensure the index is up to date.
-    git update-index --really-refresh -q &>/dev/null
+function git_status() {
+    _add_git_widget "$1" _git_status
+}
 
+function _git_status() {
     # String of indicators
     local indicators=''
 
@@ -153,67 +174,94 @@ function _displayDefault() {
 
     [ -n "${indicators}" ] && touchbarIndicators="🔥[${indicators}]" || touchbarIndicators="🙌";
 
-    setKey 2 "🎋 `git_current_branch`" _displayBranches '-q'
-    setKey 3 $touchbarIndicators "git status"
-    setKey 4 "🔼 push" "git push origin $(git_current_branch)"
-    setKey 5 "🔽 pull" "git pull origin $(git_current_branch)"
-  fi
+    setKey "$1" $touchbarIndicators "git status"
+}
 
-  fnKeysIndex=6
+function git_pull() {
+    _add_git_widget "$1" _git_pull
+}
 
-  # PACKAGE.JSON
-  # ------------
-  if [[ $(find-up package.json) != "" ]]; then
-      if [[ $(find-up yarn.lock) != "" ]] && [[ "$YARN_ENABLED" = true ]]; then
-          setKey "$fnKeysIndex" "🐱 yarn-run" _displayYarnScripts '-q'
-      else
-         setKey "$fnKeysIndex" "⚡️ npm-run" _displayNpmScripts '-q'
-      fi
-      fnKeysIndex=$((fnKeysIndex + 1))
-  fi
+function _git_pull() {
+    setKey "$1" "🔽 pull" "git pull origin $(git_current_branch)"    
+}
 
-  # Rails
-  # ------------
-  grep 'rails' 'Gemfile' >/dev/null 2>&1
-  if [ $? -eq 0 ]; then
-      setKey "$fnKeysIndex" "🚂️ rails" _displayRailsOptions '-q'
-      fnKeysIndex=$((fnKeysIndex + 1))
-  elif test -e Rakefile ; then
-      if _rake_does_task_list_need_generating; then
-          echo "\nGenerating .rake_tasks..." >&2
-          _rake_generate
-      fi
-      setKey "$fnKeysIndex" "⚡️ rake tasks" _displayRakeTasks '-q'
-      fnKeysIndex=$((fnKeysIndex + 1))
-  fi
 
-  # DOCKER-COMPOSE.yaml
-  # ------------
-  if test -e docker-compose.yaml || test -e docker-compose.yml; then
-      setKey "$fnKeysIndex" "⚡️ docker" _displayDockerComposerOptions '-q'
-    fnKeysIndex=$((fnKeysIndex + 1))
-  fi
+function git_push() {
+    _add_git_widget "$1" _git_push
+}
 
-  # COMPOSER.JSON
-  # ------------
-  if [[ -f composer.json ]]; then
+function _git_push() {
+    setKey "$1" "🔽 push" "git push origin $(git_current_branch)"    
+}
 
-      if [[ -f composer.lock ]]; then
-          local cmd fs='composer update'
-      else
-          local cmd='composer install'
-      fi
+function current_dir() {
+  local current_dir_label="👉 $(echo $(pwd) | awk -F/ '{print $(NF-1)"/"$(NF)}')\a"
+  setKey "$1" "$current_dir_label" "$current_dir_cmd"
+}
 
-   setKey "$fnKeysIndex" "⚡️ composer" "$cmd"
-   fnKeysIndex=$((fnKeysIndex + 1))
-  fi
-
-   # phpunit.xml
-   # ------------
-   if [[ -f phpunit.xml ]]; then
-     setKey "$fnKeysIndex" "⚡️ phpunit" "phpunit"
-     fnKeysIndex=$((fnKeysIndex + 1))
+function yarn_or_npm() {
+    if [[ $(find-up package.json) != "" ]]; then
+        if [[ $(find-up yarn.lock) != "" ]] && [[ "${yarn_enabled}" = true ]]; then
+            setKey "$1" "🐱 yarn-run" _displayYarnScripts '-q'
+        else
+            setKey "$1" "⚡️ npm-run" _displayNpmScripts '-q'
+        fi
     fi
+}
+
+function rails_or_rake() {
+    grep 'rails' 'Gemfile' >/dev/null 2>&1
+    if [ $? -eq 0 ]; then
+        setKey "$1" "🚂️ rails" _displayRailsOptions '-q'
+    elif test -e Rakefile ; then
+        if _rake_does_task_list_need_generating; then
+            echo "\nGenerating .rake_tasks..." >&2
+            _rake_generate
+        fi
+        setKey "$1" "⚡️ rake tasks" _displayRakeTasks '-q'
+    fi
+}
+
+function docker-compose() {
+    if test -e docker-compose.yaml || test -e docker-compose.yml; then
+        setKey "$1" "⚡️ docker" _displayDockerComposerOptions '-q'
+    fi
+}
+
+function composer() {
+    if [[ -f composer.lock ]]; then
+        local cmd fs='composer update'
+    else
+        local cmd='composer install'
+    fi
+
+    setKey "$1" "⚡️ composer" "$cmd"
+}
+
+function phpunit() {
+    if [[ -f phpunit.xml ]]; then
+        setKey "$1" "⚡️ phpunit" "phpunit"
+    fi
+}
+
+# making widgets available
+# for touchbar_widget in $touchbar_widgets; do
+#     zle -N $touchbar_widget
+# done
+
+### Flow logic
+function _displayDefault() {
+  _clearTouchbar
+  _unbindTouchbar
+
+  touchBarState=''
+
+
+  local   fnKeysIndex=1
+  for touchbar_widget in "$touchbar_widgets"; do
+      eval "$touchbar_widget $fnKeysIndex"
+      fnKeysIndex=$((fnKeysIndex + 1))
+  done
 }
 
 
