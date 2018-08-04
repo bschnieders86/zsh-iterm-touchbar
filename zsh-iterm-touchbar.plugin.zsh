@@ -244,10 +244,6 @@ function phpunit() {
     fi
 }
 
-# making widgets available
-# for touchbar_widget in $touchbar_widgets; do
-#     zle -N $touchbar_widget
-# done
 
 ### Flow logic
 function _displayDefault() {
