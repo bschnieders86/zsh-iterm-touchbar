@@ -155,8 +155,8 @@ function _displayDefault() {
 
     setKey 2 "🎋 `git_current_branch`" _displayBranches '-q'
     setKey 3 $touchbarIndicators "git status"
-    setKey 4 "🔼 push" "git push origin $(git_current_branch)"
-    setKey 5 "🔽 pull" "git pull origin $(git_current_branch)"
+    setKey 4 "👆️ push" "git push origin $(git_current_branch)"
+    setKey 5 "👇️ pull" "git pull origin $(git_current_branch)"
   fi
 
   fnKeysIndex=6
@@ -190,7 +190,7 @@ function _displayDefault() {
   # DOCKER-COMPOSE.yaml
   # ------------
   if test -e docker-compose.yaml || test -e docker-compose.yml; then
-      setKey "$fnKeysIndex" "⚡️ docker" _displayDockerComposerOptions '-q'
+      setKey "$fnKeysIndex" "🐳 docker" _displayDockerComposerOptions '-q'
     fnKeysIndex=$((fnKeysIndex + 1))
   fi
 
@@ -204,7 +204,7 @@ function _displayDefault() {
           local cmd='composer install'
       fi
 
-   setKey "$fnKeysIndex" "⚡️ composer" "$cmd"
+      setKey "$fnKeysIndex" "🐘 composer" "$cmd"
    fnKeysIndex=$((fnKeysIndex + 1))
   fi
 
