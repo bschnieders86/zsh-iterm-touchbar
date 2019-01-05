@@ -174,16 +174,8 @@ function _displayDefault() {
 
   # Rails
   # ------------
-  grep 'rails' 'Gemfile' >/dev/null 2>&1
-  if [ $? -eq 0 ]; then
+  if _is_rails_app ; then
       setKey "$fnKeysIndex" "🚂️ rails" _displayRailsOptions '-q'
-      fnKeysIndex=$((fnKeysIndex + 1))
-  elif test -e Rakefile ; then
-      if _rake_does_task_list_need_generating; then
-          echo "\nGenerating .rake_tasks..." >&2
-          _rake_generate
-      fi
-      setKey "$fnKeysIndex" "⚡️ rake tasks" _displayRakeTasks '-q'
       fnKeysIndex=$((fnKeysIndex + 1))
   fi
 
@@ -279,56 +271,11 @@ function _displayBranches() {
   setKey 1 "👈 back" _displayDefault '-q'
 }
 
-_displayRakeTasks() {
 
-    _clearTouchbar
-    _unbindTouchbar
-
-    touchBarState='rakeTasks'
-
-    fnKeysIndex=1
-    tasks=($(cat .rake_tasks |tr '\n' ' '))
-
-    for task in $tasks; do
-
-        fnKeysIndex=$((fnKeysIndex + 1))
-        if (($2 <= 16)); then
-            setKey "$fnKeysIndex" "$task" "rake $task"
-        fi
-      _addRakeTask $task $fnKeysIndex
-    done
-
-    setKey 1 "👈 back" _displayDefault '-q'
-  }
-
- _rake_does_task_list_need_generating () {
-  [[ ! -f .rake_tasks ]] || [[ Rakefile -nt .rake_tasks ]] || { _is_rails_app && _tasks_changed }
-}
-
- _tasks_changed () {
-  local -a files
-  files=(lib/tasks lib/tasks/**/*(N))
-
-  for file in $files; do
-    if [[ "$file" -nt .rake_tasks ]]; then
-      return 0
-    fi
-  done
-
-  return 1
-}
-
- _rake_generate () {
-  rake --silent --tasks | cut -d " " -f 2 > .rake_tasks
-}
-
- rake_refresh () {
-  [[ -f .rake_tasks ]] && rm -f .rake_tasks
-
-  echo "generating rake task overview..." >&2
-  _rake_generate
-  cat .rake_tasks
-}
+ _is_rails_app () {
+    grep 'rails' 'Gemfile' >/dev/null 2>&1
+    [ $? -eq 0 ]
+ }
 
 _displayDockerComposerOptions(){
      _clearTouchbar
